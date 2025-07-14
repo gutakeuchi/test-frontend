@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/api';
 import { useNavigate, useLocation } from 'react-router-dom';
+import '../Pedidos.css';
 
 function Pedidos() {
   const [pedidos, setPedidos] = useState(null);
@@ -8,6 +9,8 @@ function Pedidos() {
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroCodigo, setFiltroCodigo] = useState('');
   const [pagina, setPagina] = useState(1);
+  const [pedidosSelecionados, setPedidosSelecionados] = useState([]);
+
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const usuario = params.get('username');
@@ -16,12 +19,15 @@ function Pedidos() {
 
   const carregarPedidos = async () => {
     try {
-      const response = await api.get(`https://api-pedido-erp-gateway-prod.saurus.net.br/api/v2/financeiro/faturas?Page=${pagina}&PageSize=${10}`, {
-        headers: {
-          aplicacaoId: '061f92f5-f2a2-410a-8e2b-b3a28132c258',
-          username: usuario,
+      const response = await api.get(
+        `https://api-pedido-erp-gateway-prod.saurus.net.br/api/v2/financeiro/faturas?Page=${pagina}&PageSize=10`,
+        {
+          headers: {
+            aplicacaoId: '061f92f5-f2a2-410a-8e2b-b3a28132c258',
+            username: usuario,
+          },
         }
-      });
+      );
 
       setPedidos(response.data);
     } catch (err) {
@@ -38,15 +44,39 @@ function Pedidos() {
     carregarPedidos();
   };
 
-  const handlePagamento = (numeroFatura, usuario) => {
+  const handlePagamento = (numeroFatura) => {
     navigate(`/pagamento?numeroFatura=${numeroFatura}&username=${usuario}`);
   };
 
+  const handleSelecionar = (pedido) => {
+    setPedidosSelecionados((prev) => {
+      const jaSelecionado = prev.find((p) => p.numeroFatura === pedido.numeroFatura);
+      if (jaSelecionado) {
+        return prev.filter((p) => p.numeroFatura !== pedido.numeroFatura);
+      } else {
+        return [...prev, pedido];
+      }
+    });
+  };
+
+  const totalSelecionado = pedidosSelecionados.reduce(
+    (acc, pedido) => acc + pedido.valorFatura,
+    0
+  );
+
+  const handlePagamentoSelecionados = () => {
+    const numeros = pedidosSelecionados.map((p) => p.numeroFatura).join(',');
+    navigate(`/pagamento?numerosFaturas=${numeros}&username=${usuario}`);
+  };
+
+  const isSelecionado = (numeroFatura) =>
+    pedidosSelecionados.some((p) => p.numeroFatura === numeroFatura);
+
   return (
-    <div style={{ padding: 20 }}>
+    <div className="pedidos-container">
       <h2>Pedidos Pendentes</h2>
 
-      <form onSubmit={handleBuscar} style={{ marginBottom: 20 }}>
+      <form onSubmit={handleBuscar} className="filtros-form">
         <input
           type="text"
           placeholder="CNPJ"
@@ -69,24 +99,50 @@ function Pedidos() {
       </form>
 
       {pedidos && (
-        <ul>
-          {pedidos["totalResults"] === 0 && <p>Nenhum pedido encontrado.</p>}
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          {pedidos.totalResults === 0 && <p>Nenhum pedido encontrado.</p>}
 
-          {pedidos["list"].map((pedido) => (
-            <li key={pedido.numeroFatura} style={{ marginBottom: 10 }}>
-              <strong>Pedido:</strong> {pedido.numeroFatura} | <strong>Cliente:</strong> {pedido.pessoa.nome}<br />
-              <strong>Total:</strong> R$ {pedido.valorFatura.toFixed(2)}<br />
-              <button onClick={() => handlePagamento(pedido.numeroFatura, usuario)}>Pagar</button>
+          {pedidos.list.map((pedido) => (
+            <li key={pedido.numeroFatura} className="pedido-item">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={isSelecionado(pedido.numeroFatura)}
+                  onChange={() => handleSelecionar(pedido)}
+                />
+                <div>
+                  <strong>Pedido:</strong> {pedido.numeroFatura}
+                  <br />
+                  <strong>Cliente:</strong> {pedido.pessoa.nome}
+                  <br />
+                  <strong>Total:</strong> R$ {pedido.valorFatura.toFixed(2)}
+                  <br />
+                  <button type="button" onClick={() => handlePagamento(pedido.numeroFatura)}>
+                    Pagar Individual
+                  </button>
+                </div>
+              </label>
             </li>
           ))}
         </ul>
       )}
 
-      {<div style={{ marginTop: 20 }}>
+      {pedidosSelecionados.length > 0 && (
+        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+          <p>
+            <strong>Total Selecionado:</strong> R$ {totalSelecionado.toFixed(2)}
+          </p>
+          <button className="botao-pagar" onClick={handlePagamentoSelecionados}>
+            Pagar Selecionados ({pedidosSelecionados.length})
+          </button>
+        </div>
+      )}
+
+      <div className="paginacao">
         <button onClick={() => setPagina((p) => Math.max(p - 1, 1))}>Anterior</button>
-        <span style={{ margin: '0 10px' }}>Página {pagina}</span>
+        <span>Página {pagina}</span>
         <button onClick={() => setPagina((p) => p + 1)}>Próxima</button>
-      </div>}
+      </div>
     </div>
   );
 }

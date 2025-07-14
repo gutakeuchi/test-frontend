@@ -1,169 +1,349 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api';
+import '../Pagamento.css';
 
 function Pagamento() {
-  const { id } = useParams();
-  const [pedido, setPedido] = useState(null);
-  const [forma, setForma] = useState('');
-  const [cartao, setCartao] = useState({ numero: '', validade: '', codigo: '' });
-  const [pix, setPix] = useState('');
-  const [mensagem, setMensagem] = useState('');
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
+
   const params = new URLSearchParams(location.search);
-  const numeroFatura = params.get('numeroFatura');
-  const usuario = params.get('username');
+  const username = params.get('username');
+  const numeroFaturaUnica = params.get('numeroFatura');
+  const numerosFaturas = params.get('numerosFaturas'); // múltiplas
 
+  const [pedidos, setPedidos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Buscar pedido fictício pelo ID (como não temos endpoint específico, simula)
+  const [formaPagamento, setFormaPagamento] = useState('');
+  const [chavePix, setChavePix] = useState('');
+  const [numeroCartao, setNumeroCartao] = useState('');
+  const [validade, setValidade] = useState('');
+  const [codigoSeguranca, setCodigoSeguranca] = useState('');
+
+  // Estado para controlar animação/status do pagamento
+  const [statusPagamento, setStatusPagamento] = useState('idle'); // 'idle' | 'processing' | 'success'
+
   useEffect(() => {
-    const buscarPedido = async () => {
+    const fetchPedidos = async () => {
       try {
-        const resposta = await api.get(`https://api-pedido-erp-gateway-prod.saurus.net.br/api/v2/financeiro/faturas?NumFatura=${numeroFatura}`, {
-          headers: {
-            aplicacaoId: '061f92f5-f2a2-410a-8e2b-b3a28132c258',
-            username: usuario,
+        setLoading(true);
+        setError(null);
+
+        const resposta = await api.get(
+          'https://api-pedido-erp-gateway-prod.saurus.net.br/api/v2/financeiro/faturas',
+          {
+            headers: {
+              aplicacaoId: '061f92f5-f2a2-410a-8e2b-b3a28132c258',
+              username: username,
+            },
           }
-        });
-        
-        const encontrado = resposta.data.list.filter(
-          (pedido) => pedido.numeroFatura === numeroFatura)[0]
-        if (encontrado) {
-          setPedido(encontrado);
+        );
+
+        let listaFaturas = [];
+        if (numeroFaturaUnica) {
+          listaFaturas = resposta.data.list.filter(
+            (p) => p.numeroFatura === numeroFaturaUnica
+          );
+        } else if (numerosFaturas) {
+          const faturasArray = numerosFaturas.split(',');
+          listaFaturas = resposta.data.list.filter((p) =>
+            faturasArray.includes(p.numeroFatura)
+          );
+        }
+
+        if (listaFaturas.length > 0) {
+          setPedidos(listaFaturas);
         } else {
-          setMensagem('Pedido não encontrado');
+          setError('Pedido(s) não encontrado(s).');
         }
       } catch (err) {
-        console.error('Erro ao carregar pedido:', err);
+        console.error('Erro ao buscar pedidos:', err);
+        setError('Erro ao buscar pedidos.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    buscarPedido();
-  }, [id]);
+    fetchPedidos();
+  }, [numeroFaturaUnica, numerosFaturas, username]);
+
+  const valorTotal = pedidos.reduce((acc, p) => acc + p.valorFatura, 0);
 
   const handlePagamento = async () => {
-    let payload = {
-      pedidoId: pedido.id,
-      formaPagamento: forma,
-      valor: pedido.total,
-    };
-
-    if (forma === 'credito' || forma === 'debito') {
-      payload = {
-        ...payload,
-        cartao: { ...cartao }
-      };
-    } else if (forma === 'pix') {
-      payload = {
-        ...payload,
-        chavePix: pix
-      };
+    if (!formaPagamento) {
+      alert('Selecione uma forma de pagamento.');
+      return;
     }
 
-    try {
-      await api.post('https://api-pedido-erp-gateway-prod.saurus.net.br/api/v2/financeiro/retorno', {
-        "faturas": [
-          pedido
-        ],
-        "valorTotal": 0,
-        "resultadoTransacao": {
-          "idTransacao": "string",
-          "nsu": "string",
-          "codAut": "string",
-          "codControle": "string",
-          "dRetorno": "2025-07-13T23:46:24.225Z",
-          "numCartao": "string",
-          "bandeira": "string",
-          "rede": "string",
-          "adquirente": "string",
-          "valorPagamento": 0,
-          "tipoPagamento": 1,
-          "qtdeParcelas": 0,
-          "dTransacao": "2025-07-13T23:46:24.225Z",
-          "status": 0,
-          "msgRetorno": "string",
-          "arqRetorno": "string"
-        }
-      }, {
-        headers: {
-          aplicacaoid: '061f92f5-f2a2-410a-8e2b-b3a28132c258',
-          username: usuario,
-        }
-
-      });
-      alert('Pagamento processado com sucesso!');
-      navigate(`/pedidos?username=${usuario}`);
-    } catch (err) {
-      console.error('Erro no pagamento:', err);
-      alert('Erro no pagamento. Tente novamente.');
+    if (formaPagamento === 'PIX' && chavePix.trim() === '') {
+      alert('Informe a chave PIX.');
+      return;
     }
+
+    if (
+      (formaPagamento === 'Crédito' || formaPagamento === 'Débito') &&
+      (numeroCartao.trim() === '' ||
+        validade.trim() === '' ||
+        codigoSeguranca.trim() === '')
+    ) {
+      alert('Preencha todos os dados do cartão.');
+      return;
+    }
+
+    // Inicia animação de processamento
+    setStatusPagamento('processing');
+
+    // Simula o tempo de processamento (ex: 2.5 segundos)
+    setTimeout(async () => {
+      try {
+        await api.post(
+          'https://api-pedido-erp-gateway-prod.saurus.net.br/api/v2/financeiro/retorno',
+          {
+            faturas: pedidos,
+            valorTotal: valorTotal,
+            resultadoTransacao: {
+              idTransacao: 'abc123',
+              status: 0,
+              tipoPagamento: formaPagamento === 'PIX' ? 1 : 2,
+              valorPagamento: valorTotal,
+              dTransacao: new Date().toISOString(),
+              msgRetorno: 'Transação simulada com sucesso.',
+            },
+          },
+          {
+            headers: {
+              aplicacaoId: '061f92f5-f2a2-410a-8e2b-b3a28132c258',
+              username: username,
+            },
+          }
+        );
+
+        // Após sucesso, muda status para success
+        setStatusPagamento('success');
+
+        // Redireciona após 2.5s
+        setTimeout(() => {
+          navigate(`/pedidos?username=${username}`);
+        }, 2500);
+      } catch (err) {
+        console.error('Erro no envio da transação:', err);
+        alert('Erro no pagamento. Tente novamente.');
+        setStatusPagamento('idle'); // volta para estado inicial
+      }
+    }, 2500);
   };
 
-  if (!pedido) return <p>Carregando pedido...</p>;
-  if (mensagem) return <p>{mensagem}</p>;
+  if (loading) return <p>Carregando dados do(s) pedido(s)...</p>;
+  if (error) return <p>{error}</p>;
+
+  // Renderiza a animação e mensagens conforme o status
+  if (statusPagamento === 'processing') {
+  return (
+    <div
+      className="pagamento-container"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '70vh',
+        padding: '2rem',
+        textAlign: 'center',
+      }}
+    >
+      <div className="loading-spinner" />
+      <p style={{ marginTop: '1rem', fontSize: '1.2rem' }}>
+        Pagamento em andamento...
+      </p>
+    </div>
+  );
+}
+
+if (statusPagamento === 'success') {
+  return (
+    <div
+      className="pagamento-container"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '70vh',
+        padding: '2rem',
+        textAlign: 'center',
+        color: '#FF0000', 
+      }}
+    >
+      <i
+        className="fas fa-check-circle"
+        style={{ fontSize: '4rem', marginBottom: '1rem' }}
+      />
+      <p
+        style={{
+          fontSize: '1.5rem',
+          fontWeight: '800',
+          marginBottom: '0.5rem',
+        }}
+      >
+        Pagamento efetuado com sucesso!
+      </p>
+      <p>Aguarde, você será redirecionado...</p>
+    </div>
+  );
+}
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Pagamento do Pedido #{pedido.numeroFatura}</h2>
-      <p><strong>Cliente:</strong> {pedido.nomeCliente}</p>
-      <p><strong>Total:</strong> R$ {pedido.valorFatura.toFixed(2)}</p>
+    <div className="pagamento-container">
+      <div className="pagamento-card">
+        <h2 className="titulo">
+          Pagamento de {pedidos.length > 1 ? 'Pedidos' : 'Pedido'}
+        </h2>
 
-      <div style={{ marginTop: 20 }}>
-        <h3>Forma de Pagamento</h3>
-        <label>
-          <input type="radio" value="credito" checked={forma === 'credito'} onChange={(e) => setForma(e.target.value)} />
-          Crédito
-        </label>
-        <label>
-          <input type="radio" value="debito" checked={forma === 'debito'} onChange={(e) => setForma(e.target.value)} />
-          Débito
-        </label>
-        <label>
-          <input type="radio" value="pix" checked={forma === 'pix'} onChange={(e) => setForma(e.target.value)} />
-          PIX
-        </label>
+        {pedidos.map((p) => (
+          <div key={p.numeroFatura} style={{ marginBottom: '1rem' }}>
+            <p>
+              <strong>Pedido:</strong> {p.numeroFatura}
+            </p>
+            <p>
+              <strong>Cliente:</strong> {p.pessoa.nome}
+            </p>
+            <p>
+              <strong>Valor:</strong> R$ {p.valorFatura.toFixed(2)}
+            </p>
+            <hr />
+          </div>
+        ))}
+
+        <div className="caixa">
+          <p style={{ fontWeight: 'bold', fontSize: '1.2rem', marginTop: '1rem' }}>
+            Valor Total: R$ {valorTotal.toFixed(2)}
+          </p>
+        </div>
+
+        <div className="secao-forma">
+          <label>
+            <strong>Forma de Pagamento</strong>
+          </label>
+          <div className="forma-opcoes">
+            <label>
+              <input
+                type="radio"
+                name="pagamento"
+                value="Crédito"
+                checked={formaPagamento === 'Crédito'}
+                onChange={(e) => setFormaPagamento(e.target.value)}
+              />
+              <span style={{ marginLeft: '0.5rem' }}>
+                <i className="fas fa-credit-card" style={{ marginRight: '0.4rem' }}></i>
+                Crédito
+              </span>
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="pagamento"
+                value="Débito"
+                checked={formaPagamento === 'Débito'}
+                onChange={(e) => setFormaPagamento(e.target.value)}
+              />
+              <span style={{ marginLeft: '0.5rem' }}>
+                <i className="fas fa-credit-card" style={{ marginRight: '0.4rem' }}></i>
+                Débito
+              </span>
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="pagamento"
+                value="PIX"
+                checked={formaPagamento === 'PIX'}
+                onChange={(e) => setFormaPagamento(e.target.value)}
+              />
+              <span style={{ marginLeft: '0.5rem' }}>
+                <i className="fas fa-qrcode" style={{ marginRight: '0.4rem' }}></i>
+                PIX
+              </span>
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="pagamento"
+                value="Boleto"
+                checked={formaPagamento === 'Boleto'}
+                onChange={(e) => setFormaPagamento(e.target.value)}
+              />
+              <span style={{ marginLeft: '0.5rem' }}>
+                <i className="fa-solid fa-file-invoice" style={{ marginRight: '0.4rem' }}></i>
+                Boleto
+              </span>
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="pagamento"
+                value="Dinheiro"
+                checked={formaPagamento === 'Dinheiro'}
+                onChange={(e) => setFormaPagamento(e.target.value)}
+              />
+              <span style={{ marginLeft: '0.5rem' }}>
+                <i
+                  className="fa-solid fa-money-bill-wave"
+                  style={{ marginRight: '0.4rem' }}
+                ></i>
+                Dinheiro
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {formaPagamento === 'PIX' && (
+          <div className="secao-input">
+            <label>Chave PIX</label>
+            <input
+              type="text"
+              placeholder="Chave PIX"
+              value={chavePix}
+              onChange={(e) => setChavePix(e.target.value)}
+            />
+          </div>
+        )}
+
+        {(formaPagamento === 'Crédito' || formaPagamento === 'Débito') && (
+          <div className="secao-input">
+            <label>Número do cartão</label>
+            <input
+              type="text"
+              placeholder="Número do cartão"
+              value={numeroCartao}
+              onChange={(e) => setNumeroCartao(e.target.value)}
+            />
+            <label>Validade (MM/AA)</label>
+            <input
+              type="text"
+              placeholder="MM/AA"
+              value={validade}
+              onChange={(e) => setValidade(e.target.value)}
+            />
+            <label>Código de segurança</label>
+            <input
+              type="text"
+              placeholder="CVV"
+              value={codigoSeguranca}
+              onChange={(e) => setCodigoSeguranca(e.target.value)}
+            />
+          </div>
+        )}
+
+        <button className="botao-pagar" onClick={handlePagamento}>
+          Pagar R$ {valorTotal.toFixed(2)}
+        </button>
       </div>
-
-      {forma === 'credito' || forma === 'debito' ? (
-        <div style={{ marginTop: 10 }}>
-          <h4>Dados do Cartão</h4>
-          <input
-            type="text"
-            placeholder="Número do cartão"
-            value={cartao.numero}
-            onChange={(e) => setCartao({ ...cartao, numero: e.target.value })}
-          /><br />
-          <input
-            type="text"
-            placeholder="Validade (MM/AA)"
-            value={cartao.validade}
-            onChange={(e) => setCartao({ ...cartao, validade: e.target.value })}
-          /><br />
-          <input
-            type="text"
-            placeholder="Código de segurança"
-            value={cartao.codigo}
-            onChange={(e) => setCartao({ ...cartao, codigo: e.target.value })}
-          />
-        </div>
-      ) : null}
-
-      {forma === 'pix' && (
-        <div style={{ marginTop: 10 }}>
-          <h4>Chave PIX</h4>
-          <input
-            type="text"
-            placeholder="Chave PIX"
-            value={pix}
-            onChange={(e) => setPix(e.target.value)}
-          />
-        </div>
-      )}
-
-      <button onClick={handlePagamento} style={{ marginTop: 20 }}>
-        Pagar
-      </button>
     </div>
   );
 }

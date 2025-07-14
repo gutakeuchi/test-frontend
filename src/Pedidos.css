@@ -1,0 +1,159 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+
+.pedidos-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+  font-family: 'Poppins', sans-serif;
+  box-sizing: border-box;
+}
+
+.pedidos-container h2 {
+  margin-bottom: 1.5rem;
+  color: #1f2937;
+  font-size: 1.8rem;
+}
+
+.filtros-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.filtros-form input {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  min-width: 250px;
+  box-sizing: border-box;
+}
+
+.filtros-form input:focus {
+  font-weight: 500; /* deixa o texto mais marcante (opcional) */
+  outline: none; /* remove aquela borda azul padrão */
+  border-color: #FF0000; /* borda vermelha para destacar */
+}
+
+.filtros-form button {
+  padding: 0.6rem 1.5rem;
+  background-color: #FF0000;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.filtros-form button:hover {
+  background-color: #8B0000;
+}
+
+.pedido-item {
+  background-color: #f9fafb;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  word-wrap: break-word;
+}
+
+.pedido-item button {
+  margin-top: 0.5rem;
+  background-color: #FF0000;
+  color: white;
+  padding: 0.6rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 1rem;
+}
+
+.pedido-item button:hover {
+  background-color: #8B0000;
+}
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  font-weight: bold;
+  flex-wrap: wrap;
+}
+
+.paginacao button {
+  background-color: #6b7280;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 1rem;
+}
+
+.paginacao button:hover {
+  background-color: #4b5563;
+}
+
+/* RESPONSIVO para telas menores */
+@media (max-width: 600px) {
+ .pedidos-container {
+    padding: 1rem;
+  }
+
+  .filtros-form {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .filtros-form input,
+  .filtros-form button {
+    width: 100%;
+  }
+
+  .filtros-form button {
+    padding: 0.8rem;
+    font-size: 1.1rem;
+  }
+
+  .pedido-item button {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1.05rem;
+  }
+
+  /* MELHORIA NA PAGINAÇÃO NO MOBILE */
+  .paginacao {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-direction: row;
+  }
+
+  .paginacao button {
+    flex: 1;
+    font-size: 1.05rem;
+    padding: 0.75rem;
+  }
+
+  .paginacao span {
+    flex: 1;
+    text-align: center;
+  }
+
+  .pedidos-container h2 {
+    text-align: center;
+    font-size: 1.5rem;
+  }
+}

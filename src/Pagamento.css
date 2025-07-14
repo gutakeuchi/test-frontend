@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+
+.pagamento-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #f5f6fa;
+  padding: 1rem;
+  font-family: 'Poppins', sans-serif;
+}
+
+.pagamento-card {
+  background-color: #fff;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  box-sizing: border-box;
+}
+
+/* Título */
+.titulo {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #FF0000;
+  padding-bottom: 0.5rem;
+  word-break: break-word;
+}
+
+/* Forma de pagamento */
+.secao-forma {
+  margin-top: 1rem;
+}
+
+.forma-opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+/* Inputs */
+.secao-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+input[type="text"],
+input[type="password"] {
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Botão */
+.botao-pagar {
+  width: 100%;
+  background-color: #FF0000;
+  color: white;
+  border: none;
+  padding: 0.8rem;
+  margin-top: 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.botao-pagar:hover {
+  background-color: #8B0000;
+}
+
+.caixa {
+  background-color: #dddd;
+  border: 1px solid  #ddd;
+  padding: 0.4rem;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .pagamento-card {
+    padding: 1.5rem;
+    max-width: 95%;
+  }
+
+  .forma-opcoes {
+    flex-direction: column;
+  }
+
+  .titulo {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pagamento-card {
+    padding: 1rem;
+  }
+
+  .titulo {
+    font-size: 1.1rem;
+    text-align: center;
+  }
+
+  .botao-pagar {
+    font-size: 0.95rem;
+    padding: 0.75rem;
+  }
+
+  input[type="text"],
+  input[type="password"] {
+    font-size: 0.95rem;
+    padding: 0.55rem;
+  }
+
+  .forma-opcoes {
+    gap: 0.75rem;
+  }
+}
+
+.loading-spinner {
+  border: 6px solid #f3f3f3; /* cinza claro */
+  border-top: 6px solid #FF0000; /* vermelho */
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  margin: 0 auto;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
