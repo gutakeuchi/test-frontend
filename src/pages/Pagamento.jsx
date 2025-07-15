@@ -6,16 +6,14 @@ import '../Pagamento.css';
 function Pagamento() {
   const location = useLocation();
   const navigate = useNavigate();
-
   const params = new URLSearchParams(location.search);
   const username = params.get('username');
   const numeroFaturaUnica = params.get('numeroFatura');
   const numerosFaturas = params.get('numerosFaturas'); // múltiplas
-
+  const aplicacaoId = params.get('aplicacaoId');
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [formaPagamento, setFormaPagamento] = useState('');
   const [chavePix, setChavePix] = useState('');
   const [numeroCartao, setNumeroCartao] = useState('');
@@ -35,7 +33,7 @@ function Pagamento() {
           'https://api-pedido-erp-gateway-prod.saurus.net.br/api/v2/financeiro/faturas',
           {
             headers: {
-              aplicacaoId: '061f92f5-f2a2-410a-8e2b-b3a28132c258',
+              aplicacaoId: aplicacaoId,
               username: username,
             },
           }
@@ -125,7 +123,7 @@ function Pagamento() {
 
         // Redireciona após 2.5s
         setTimeout(() => {
-          navigate(`/pedidos?username=${username}`);
+          navigate(`/pedidos?username=${username}&aplicacaoId=${aplicacaoId}`);
         }, 2500);
       } catch (err) {
         console.error('Erro no envio da transação:', err);

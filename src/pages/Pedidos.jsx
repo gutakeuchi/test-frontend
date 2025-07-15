@@ -10,11 +10,10 @@ function Pedidos() {
   const [filtroCodigo, setFiltroCodigo] = useState('');
   const [pagina, setPagina] = useState(1);
   const [pedidosSelecionados, setPedidosSelecionados] = useState([]);
-
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const usuario = params.get('username');
-
+  const aplicacaoId = params.get('aplicacaoId');
   const navigate = useNavigate();
 
   const carregarPedidos = async () => {
@@ -23,12 +22,28 @@ function Pedidos() {
         `https://api-pedido-erp-gateway-prod.saurus.net.br/api/v2/financeiro/faturas?Page=${pagina}&PageSize=10`,
         {
           headers: {
-            aplicacaoId: '061f92f5-f2a2-410a-8e2b-b3a28132c258',
+            aplicacaoId: aplicacaoId,
             username: usuario,
+
           },
+          params: {
+            Cnpj: filtroCNPJ,
+            CodCliente: filtroCodigo
+          }
         }
       );
 
+      response.data.list = response.data.list.filter((pedido) => {
+        const cnpj = pedido.pessoa?.cpfCnpj;
+        const nome = pedido.pessoa?.nome;
+        const codigo = pedido.pessoa?.codigo;
+
+        if (filtroCNPJ && !cnpj.includes(filtroCNPJ)) return false;
+        if (filtroNome && !nome.toLowerCase().includes(filtroNome.toLowerCase())) return false;
+        if (filtroCodigo && !codigo.includes(filtroCodigo)) return false;
+
+        return true;
+      });
       setPedidos(response.data);
     } catch (err) {
       console.error('Erro ao carregar pedidos:', err);
@@ -45,7 +60,7 @@ function Pedidos() {
   };
 
   const handlePagamento = (numeroFatura) => {
-    navigate(`/pagamento?numeroFatura=${numeroFatura}&username=${usuario}`);
+    navigate(`/pagamento?numeroFatura=${numeroFatura}&username=${usuario}&aplicacaoId=${aplicacaoId}`);
   };
 
   const handleSelecionar = (pedido) => {
@@ -66,7 +81,7 @@ function Pedidos() {
 
   const handlePagamentoSelecionados = () => {
     const numeros = pedidosSelecionados.map((p) => p.numeroFatura).join(',');
-    navigate(`/pagamento?numerosFaturas=${numeros}&username=${usuario}`);
+    navigate(`/pagamento?numerosFaturas=${numeros}&username=${usuario}&aplicacaoId=${aplicacaoId}`);
   };
 
   const isSelecionado = (numeroFatura) =>
@@ -91,7 +106,7 @@ function Pedidos() {
         />
         <input
           type="text"
-          placeholder="Código"
+          placeholder="Código Cliente"
           value={filtroCodigo}
           onChange={(e) => setFiltroCodigo(e.target.value)}
         />
@@ -114,6 +129,10 @@ function Pedidos() {
                   <strong>Pedido:</strong> {pedido.numeroFatura}
                   <br />
                   <strong>Cliente:</strong> {pedido.pessoa.nome}
+                  <br />
+                  <strong>Código Cliente:</strong> {pedido.pessoa.codigo}
+                  <br />
+                  <strong>CNPJ ou CPF:</strong> {pedido.pessoa.cpfCnpj}
                   <br />
                   <strong>Total:</strong> R$ {pedido.valorFatura.toFixed(2)}
                   <br />
@@ -141,7 +160,7 @@ function Pedidos() {
       <div className="paginacao">
         <button onClick={() => setPagina((p) => Math.max(p - 1, 1))}>Anterior</button>
         <span>Página {pagina}</span>
-        <button onClick={() => setPagina((p) => p + 1)}>Próxima</button>
+        <button disabled={pedidos == null || pagina == pedidos.totalPages} onClick={() => setPagina((p) => p + 1)}>Próxima</button>
       </div>
     </div>
   );
